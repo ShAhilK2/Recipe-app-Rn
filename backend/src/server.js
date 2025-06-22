@@ -1,19 +1,36 @@
 import express from "express";
 import { ENV } from "./config/env.js";
-
+import db from "./db/db.js";
+import { favoritesTable } from "./db/schema.js";
 const app = express();
 
+const PORT = ENV.PORT || 5001;
+app.use(express.json());
 
-const PORT  = ENV.PORT || 5001;
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ success: true });
+});
 
+app.post("/api/favorites", async (req, res) => {
+  try {
+    const { userId, recipeId, title, image, cookTime, servings } = req.body;
 
-app.get("/api/health",(req,res)=>{
-    res.status(200).json({success :true})
-})
+    if (!userId || !recipeId || !title) {
+      return res
+        .status(400)
+        .json({ error: "Missing required fields" });
+    }
+    const newFavorite = await db
+      .insert(favoritesTable)
+      .values({ userId, recipeId, title, image, cookTime, servings }).returning();
+    
+    res.status(201).json(newFavorite[0]);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Something went wrong " + err.message });
+  }
+});
 
-
-
-app.listen(PORT,()=>{
-    console.log(`Server running on port ${PORT}`)
-})
-
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
